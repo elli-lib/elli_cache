@@ -1,0 +1,15 @@
+{application, elli_cache,
+ [{description, "Elli middleware for generic caching."},
+  {vsn, "0.0.1"},
+  {registered, []},
+  {applications,
+   [kernel,
+    stdlib
+   ]},
+  {env, []},
+  {modules, []},
+
+  {maintainers, ["Eric Bailey"]},
+  {licenses, ["MIT"]},
+  {links, [{"GitHub", "https://github.com/elli-lib/elli_cache"}]}
+ ]}.

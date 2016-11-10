@@ -1,0 +1,18 @@
+sudo: false
+language: erlang
+install: true
+before_script:
+- wget https://s3.amazonaws.com/rebar3/rebar3
+- chmod +x rebar3
+env: PATH=$PATH:.
+script: rebar3 eunit && rebar3 as test coveralls send || cat rebar3.crashdump
+cache:
+  directories:
+  - $HOME/.cache/rebar3/
+otp_release:
+- 19.0
+- 18.3
+- 18.0
+# - 17.5
+# - R16B03-1
+# - R15B03-1
