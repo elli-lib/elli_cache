@@ -28,7 +28,7 @@ postprocess(Req, {ResponseCode, Headers, Body} = Res, Config)
                 true ->
                     NewRes;
                 false ->
-                    {304, NewHeaders, <<>>}
+                    {304, prune_headers(NewHeaders), <<>>}
             end
     end;
 postprocess(_, Res, _) ->
@@ -67,6 +67,26 @@ do_modified_since(ModifiedSince, LastModified) ->
 -spec convert_date(binary()) -> calendar:datetime() | bad_date.
 convert_date(Bin) ->
     httpd_util:convert_request_date(binary_to_list(Bin)).
+
+prune_headers(Headers) ->
+    Fun = case proplists:is_defined(<<"ETag">>, Headers) of
+              true  -> fun allowed_header/1;
+              false ->
+                  fun({<<"Last-Modified">>, _}) ->
+                          true;
+                     (H) ->
+                          allowed_header(H)
+                  end
+          end,
+    lists:filter(Fun, Headers).
+
+allowed_header({<<"Cache-Control">>, _}) -> true;
+allowed_header({<<"Content-Location">>, _}) -> true;
+allowed_header({<<"Date">>, _}) -> true;
+allowed_header({<<"ETag">>, _}) -> true;
+allowed_header({<<"Expires">>, _}) -> true;
+allowed_header({<<"Vary">>, _}) -> true;
+allowed_header(_) -> false.
 
 %%% ================================================================ [ Setters ]
 
