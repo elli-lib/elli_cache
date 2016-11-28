@@ -1,0 +1,56 @@
+digraph RFC7232 {
+  label="RFC 7232, Section 6. Precedence";
+  // compound=true;
+
+  step1 [label="If-Match"];
+  sect3_1 [label="Section 3.1"];
+
+  step2 [label="If-Unmodified-Since"];
+  sect3_4 [label="Section 3.4"];
+
+  step3 [label="If-None-Match"];
+
+  step4 [label="If-Modified-Since"];
+
+  step5 [label="Range ∧ If-Range"];
+
+  206;
+  304;
+  412;
+  Res;
+
+  subgraph cluster1 {
+    label="Step 1";
+    step1 -> step3 [color=green];
+    step1 -> sect3_1 [color=red];
+    step1 -> step2 [style=dashed];
+  }
+
+  subgraph cluster2 {
+    label="Step 2";
+    step2 -> step3 [color=green, style=dashed];
+    step2 -> sect3_4 [color=red];
+  }
+
+  subgraph cluster3 {
+    label="Step 3";
+    step3 -> step5 [color=green];
+    step3 -> 304 [color=red, label="GET ∨ HEAD"];
+    step3 -> 412 [color=red, label="_Method"];
+    step3 -> step4 [style=dashed];
+  }
+
+  subgraph cluster4 {
+    label="Step 4";
+    step4 -> step5 [style=dashed, label="_Method"];
+    step4 -> step5 [color=green, label="GET ∨ HEAD"];
+    step4 -> 304 [color=red, label="GET ∨ HEAD"];
+  }
+
+  subgraph cluster5 {
+    label="Step 5";
+    step5 -> 206 [color=green];
+    step5 -> Res [color=red, label="GET"];
+    step5 -> Res [style=dashed, label="_Method"];
+  }
+}
