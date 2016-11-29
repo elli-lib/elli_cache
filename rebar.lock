@@ -1,1 +1,6 @@
-[].
+{"1.1.0",
+[{<<"erlando">>,{pkg,<<"erlando">>,<<"3.1.1">>},0}]}.
+[
+{pkg_hash,[
+ {<<"erlando">>, <<"50E54F9A9DFEC564DDFEB7FC7129F80F491856F5E07686F405CEF4E970BDFE46">>}]}
+].
