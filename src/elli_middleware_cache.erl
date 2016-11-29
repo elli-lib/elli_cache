@@ -1,121 +1,72 @@
 %%% ============================================== [ elli_middleware_cache.erl ]
 %%% @doc Generic caching middleware.
+%%% @author Eric Bailey <eric@ericb.me> [https://github.com/yurrriq]
+%%% @copyright 2016, elli-lib team
 %%% @end
-%%% ============================================================================
-
+%%% ==================================================================== [ EOH ]
 -module(elli_middleware_cache).
 
--export([postprocess/3]).
+-compile({parse_transform, do}).
 
--spec postprocess(Req, Result, Config) -> Result when
-      Req :: elli:req(),
-      Result :: elli_handler:result(),
-      Config :: [module()].
+%% Elli Middleware
+-export([preprocess/2, postprocess/3]).
+
+-include("elli_cache_util.hrl").
+-include_lib("elli/include/elli.hrl").
+
+%%% ======================================================== [ Elli Middleware ]
+
+-spec preprocess(Req1, Config) -> Req2 when
+      Req1   :: elli:req(),
+      Config :: elli_handler:callback_args(),
+      Req2   :: elli:req().
+preprocess(Req, Config)
+  when not(?GET_OR_HEAD(Req#req.method)) ->
+    from_maybe(Req,
+               do([maybe_m ||
+                   Mtime <- elli_cache:get_modified(Req, Config),
+                   Size  <- elli_cache:get_size(Req, Config),
+                   ETag  <- return(create_etag(Mtime, Size)),
+                   return(rfc7232:init(Req, Mtime, ETag))]));
+preprocess(Req, _Config) ->
+    Req.
+
+-spec postprocess(Req, Res1, Config) -> Res2 when
+      Req    :: elli:req(),
+      Res1   :: elli_handler:result(),
+      Config :: elli_handler:callback_args(),
+      Res2   :: elli_handler:result().
 postprocess(Req, {ResponseCode, Body}, Config)
-  when ok =:= ResponseCode orelse 200 =:= ResponseCode ->
+  when ?OK_GET_OR_HEAD(ResponseCode, Req#req.method) ->
     postprocess(Req, {ResponseCode, [], Body}, Config);
-postprocess(Req, {ResponseCode, Headers, Body} = Res, Config)
-  when ok =:= ResponseCode orelse 200 =:= ResponseCode ->
-    case elli_cache:modified(Req, Config) of
-        false ->
-            Res;
-        Mtime ->
-            NewHeaders = etag(Mtime, last_modified(Mtime, Headers), Body),
-            NewRes = setelement(2, Res, NewHeaders),
-            RequestHeaders = elli_request:headers(Req),
-            NoneMatch = none_match(RequestHeaders, NewHeaders),
-            case NoneMatch andalso modified_since(RequestHeaders, NewHeaders) of
-                true ->
-                    NewRes;
-                false ->
-                    {304, prune_headers(NewHeaders), <<>>}
-            end
-    end;
+postprocess(Req, {ResponseCode, _Headers, Body} = Res, Config)
+  when ?OK_GET_OR_HEAD(ResponseCode, Req#req.method) ->
+    from_maybe(Res,
+               do([maybe_m ||
+                   Mtime <- elli_cache:get_modified(Req, Config),
+                   Size  <- return(iolist_size(Body)),
+                   ETag  <- return(create_etag(Mtime, Size)),
+                   return(rfc7232:init(Req, Mtime, ETag, Res))]));
 postprocess(_, Res, _) ->
     Res.
 
-%%% ===================================================== [ Internal functions ]
+%%% ===================================================== [ Internal Functions ]
 
--spec none_match(elli:headers(), elli:headers()) -> boolean().
-none_match(RequestHeaders, ResponseHeaders) ->
-    NoneMatch = none_match(RequestHeaders),
-    ETag = etag(ResponseHeaders),
-    do_none_match(NoneMatch, ETag).
+%% @doc Create an {@link rfc7232:etag/0. ETag} from a resource's last modified
+%% date and its size.
+%% @see rfc7232:etag/0
+%% @see elli_cache
+-spec create_etag(calendar:datetime(), non_neg_integer()) -> rfc7232:etag().
+create_etag(Mtime, Size) ->
+    ETag = list_to_binary(httpd_util:create_etag(Mtime, Size)),
+    <<"\"", ETag/binary, "\"">>.
 
-do_none_match(undefined, _) -> true;
-do_none_match(_, undefined) -> true;
-do_none_match(NoneMatch, ETag) -> NoneMatch /= ETag.
-
--spec modified_since(elli:headers(), elli:headers()) -> boolean().
-modified_since(RequestHeaders, ResponseHeaders) ->
-    ModifiedSince = modified_since(RequestHeaders),
-    LastModified = last_modified(ResponseHeaders),
-    do_modified_since(ModifiedSince, LastModified).
-
-do_modified_since(undefined, _) -> true;
-do_modified_since(_, undefined) -> true;
-do_modified_since(ModifiedSince, LastModified) ->
-    case {convert_date(LastModified), convert_date(ModifiedSince)} of
-        {bad_date, _} ->
-            true;
-        {_, bad_date} ->
-            true;
-        {Modified, Since} ->
-            Modified > Since
-    end.
-
--spec convert_date(binary()) -> calendar:datetime() | bad_date.
-convert_date(Bin) ->
-    httpd_util:convert_request_date(binary_to_list(Bin)).
-
-prune_headers(Headers) ->
-    Fun = case proplists:is_defined(<<"ETag">>, Headers) of
-              true  -> fun allowed_header/1;
-              false ->
-                  fun({<<"Last-Modified">>, _}) ->
-                          true;
-                     (H) ->
-                          allowed_header(H)
-                  end
-          end,
-    lists:filter(Fun, Headers).
-
-allowed_header({<<"Cache-Control">>, _}) -> true;
-allowed_header({<<"Content-Location">>, _}) -> true;
-allowed_header({<<"Date">>, _}) -> true;
-allowed_header({<<"ETag">>, _}) -> true;
-allowed_header({<<"Expires">>, _}) -> true;
-allowed_header({<<"Vary">>, _}) -> true;
-allowed_header(_) -> false.
-
-%%% ================================================================ [ Setters ]
-
--spec etag(calendar:datetime(), elli:headers(), elli:body()) -> elli:headers().
-etag(LastModified, Headers, Body) ->
-    ETag = httpd_util:create_etag(LastModified, iolist_size(Body)),
-    [{<<"ETag">>, iolist_to_binary(ETag)} | Headers].
-
--spec last_modified(calendar:datetime(), elli:headers()) -> elli:headers().
-last_modified(LastModified, Headers) ->
-    LastModBin = list_to_binary(httpd_util:rfc1123_date(LastModified)),
-    [{<<"Last-Modified">>, LastModBin} | Headers].
-
-%%% ================================================================ [ Getters ]
-
--spec etag(elli:headers()) -> undefined | binary().
-etag(Headers) ->
-    proplists:get_value(<<"ETag">>, Headers).
-
--spec last_modified(elli:headers()) -> undefined | binary().
-last_modified(Headers) ->
-    proplists:get_value(<<"Last-Modified">>, Headers).
-
--spec modified_since(elli:headers()) -> undefined | binary().
-modified_since(Headers) ->
-    proplists:get_value(<<"If-Modified-Since">>, Headers).
-
--spec none_match(elli:headers()) -> undefined | binary().
-none_match(Headers) ->
-    proplists:get_value(<<"If-None-Match">>, Headers).
+%% @doc Like Haskell's `Data.Maybe.fromMaybe'.
+%% Given a default value and a maybe (or nullary function that returns one), if
+%% the maybe is `nothing', return the default value; otherwise, return the value
+%% contained in the maybe.
+-spec from_maybe(A, maybe_m:maybe(A) | fun(() -> maybe_m:maybe(A))) -> A.
+from_maybe(D, F) when is_function(F, 0) -> from_maybe(D, F());
+from_maybe(D, X) -> case X of nothing -> D; {just, V} -> V end.
 
 %%% ==================================================================== [ EOF ]
