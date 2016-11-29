@@ -1,0 +1,4 @@
+-define(OK_200(S), (ok =:= S orelse 200 =:= S)).
+-define(GET_OR_HEAD(M), ('GET' =:= M orelse 'HEAD' =:= M)).
+-define(OK_GET_OR_HEAD(S, M), ?OK_200(S) andalso ?GET_OR_HEAD(M)).
+-define(IF(P, T, E), case P of true -> T; false -> E end).
