@@ -11,9 +11,9 @@
 -export([init/3, init/4]).
 
 -import(proplists, [get_value/2]).
--import(elli_cache_utils, [convert_date/1,
-                           get_values/2, ifdef_delete/3, store/3,
-                           update_element/3]).
+-import(elli_cache_util, [convert_date/1,
+                          get_values/2, ifdef_delete/3, store/3,
+                          update_element/3]).
 
 -ifdef(TEST).
 -compile([export_all]).
