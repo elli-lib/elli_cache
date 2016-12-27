@@ -201,14 +201,51 @@ get_unmodified_since(Headers) ->
 
 %%% ========================================================= [ 3.5.  If-Range ]
 
-%% TODO: See Section 3.2. of IETF RFC 7233
-%% https://tools.ietf.org/html/rfc7233#section-3.2
-
-%% @doc Range and If-Range
+%% @doc If-Range
 -spec if_range(state()) -> result().
+if_range(#{req := #req{headers = RequestHeaders} = Req} = State)
+  when ?GET_OR_HEAD(Req#req.method) ->
+    case get_range(RequestHeaders) of
+        %% If there's no Range header, don't bother with If-Range.
+        undefined -> otherwise(State);
+        _Range    -> do_if_range(State, get_if_range(RequestHeaders))
+    end;
 if_range(State) ->
-    %% TODO: Range and If-Range
     otherwise(State).
+
+-spec do_if_range(state(), undefined) -> result();
+                 (state(), binary()) -> no_return().
+do_if_range(State, undefined) ->
+    otherwise(State);
+do_if_range(#{etag := ETag, mtime := Mtime} = State, ETagOrDate) ->
+    NewState =
+        ?IF(is_etag(ETagOrDate),
+            %% If-Range: ETag
+            ?IF(compare_strong(ETag, ETagOrDate), State, delete_range(State)),
+            %% If-Range: Date
+            case compare_date(fun erlang:'=:='/2, Mtime, ETagOrDate) of
+                {just, true} -> State;
+                _            -> delete_range(State)
+            end),
+    otherwise(NewState).
+
+delete_range(#{req := #req{headers = Headers} = Req} = State) ->
+    maps:update(req, Req#req{headers = delete(<<"Range">>, Headers)}, State).
+
+-spec get_if_range(Headers :: elli:headers()) -> undefined | binary().
+get_if_range(Headers) ->
+    get_value(<<"If-Range">>, Headers).
+
+%% @doc Determine with a given binary is an entity-tag or a date.
+%% Per IETF RFC 7233 Section 3.2, "A valid entity-tag can be distinguished from
+%% a valid HTTP-date by examining the first two characters for a DQUOTE."
+-spec is_etag(Value :: binary()) -> boolean().
+is_etag(ETag) when ?STRONG(ETag); ?WEAK(ETag) -> true;
+is_etag(_Date)                                -> false.
+
+-spec get_range(Headers :: elli:headers()) -> no_return().
+get_range(Headers) ->
+    get_values(<<"Range">>, Headers).
 
 %%% ================================================= [ 4.1.  304 Not Modified ]
 

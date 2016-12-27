@@ -19,6 +19,19 @@ comparison_test_() ->
      compare(<<"\"1\"">>, <<"\"1\"">>, match, match)
     ].
 
+%% FIXME: obviously
+get_if_range_test() ->
+    ?assertMatch(<<>>, rfc7232:get_if_range([{<<"If-Range">>, <<>>}])).
+
+is_etag_test_() ->
+    Data = [ {<<"Fri, 26 Mar 2010 00:05:00 GMT">>, false}
+             | [ {ETag, true} || ETag <- [<<"W/\"1\"">>, <<"W/\"2\"">>] ]
+             ++ [ {ETag, true} || ETag <- [<<"\"1\"">>, <<"\"2\"">>] ]
+           ],
+    [ {<<Bin/binary, (is(IsETag))/binary, "an ETag">>,
+       ?_assertMatch(IsETag, rfc7232:is_etag(Bin))}
+      || {Bin, IsETag} <- Data ].
+
 %%% ===================================================== [ Internal Functions ]
 
 compare(ETag1, ETag2, Strong, Weak) ->
@@ -31,6 +44,9 @@ compare(ETag1, ETag2, Strong, Weak) ->
          " ==> ", (match(Match))/binary>>,
        assertion(Compare, ETag1, ETag2, Match)}
       || {Strength, Compare, Match} <- Comparisons ].
+
+is(true)  -> <<" is ">>;
+is(false) -> <<" is not ">>.
 
 match(match) -> <<"match">>;
 match(no_match) -> <<"no match">>.
