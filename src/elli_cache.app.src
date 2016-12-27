@@ -2,11 +2,7 @@
  [{description, "Elli middleware for generic caching."},
   {vsn, "0.0.1"},
   {registered, []},
-  {applications,
-   [kernel,
-    stdlib
-   ]},
-  {env, []},
+  {applications, [kernel, stdlib ]},
   {modules, []},
 
   {maintainers, ["Eric Bailey"]},

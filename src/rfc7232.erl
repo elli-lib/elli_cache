@@ -10,6 +10,8 @@
 %% API.
 -export([init/3, init/4]).
 
+-import(proplists, [delete/2, get_value/2, get_value/3, is_defined/2]).
+
 -ifdef(TEST).
 -compile([export_all]).
 -endif.
@@ -49,7 +51,7 @@
       ETag  :: etag().
 init(Req, Mtime, ETag) ->
     State = #{req => Req, mtime => Mtime, etag => ETag},
-    step1(State).
+    if_match(State).
 
 -spec init(Req, Mtime, ETag, Res) -> elli_handler:result() when
       Req   :: elli:req(),
@@ -58,7 +60,7 @@ init(Req, Mtime, ETag) ->
       Res   :: elli_handler:result().
 init(Req, Mtime, ETag, Res) ->
     State = #{req => Req, mtime => Mtime, etag => ETag, res => Res},
-    step1(State).
+    if_match(State).
 
 %%% ===================================================== [ 2.3.2.  Comparison ]
 
@@ -93,63 +95,17 @@ compare_weak(ETag1, ETag2) ->
 
 %%% ========================================================= [ 3.1.  If-Match ]
 
--spec if_match(elli:headers()) -> [etag()].
-if_match(Headers) ->
-    get_values(<<"If-Match">>, Headers).
-
-%%% ==================================================== [ 3.2.  If-None-Match ]
-
--spec none_match(elli:headers()) -> [etag()].
-none_match(Headers) ->
-    get_values(<<"If-None-Match">>, Headers).
-
-%%% ================================================ [ 3.3.  If-Modified-Since ]
-
--spec modified_since(elli:headers()) -> undefined | binary().
-modified_since(Headers) ->
-    proplists:get_value(<<"If-Modified-Since">>, Headers).
-
-%%% ============================================== [ 3.4.  If-Unmodified-Since ]
-
--spec unmodified_since(elli:headers()) -> undefined | binary().
-unmodified_since(Headers) ->
-    proplists:get_value(<<"If-Unmodified-Since">>, Headers).
-
-%%% ========================================================= [ 3.5.  If-Range ]
-
-%% TODO: See Section 3.2. of RFC 7233
-%% https://tools.ietf.org/html/rfc7233#section-3.2
-%% if_range(Headers) -> error(nyi).
-
-%%% ================================================= [ 4.1.  304 Not Modified ]
-
--spec not_modified(state()) -> {304, elli:headers(), <<>>}.
-not_modified(#{res := Res} = State) ->
-    {_Code, NewHeaders, _Body} = update_headers(Res, State),
-    PrunedHeaders = ?IF(proplists:is_defined(<<"ETag">>, NewHeaders),
-                        proplists:delete(<<"Last-Modified">>, NewHeaders),
-                        NewHeaders),
-    {304, PrunedHeaders, <<>>}.
-
-%%% ========================================== [ 4.2.  412 Precondition Failed ]
-
--spec precondition_failed() -> no_return().
-precondition_failed() ->
-    throw({412, [], <<>>}).
-
-%%% ======================================================== [ 6.  Precendence ]
-
 %% @doc If-Match
--spec step1(state()) -> result().
-step1(#{req := #req{headers = RequestHeaders}} = State) ->
-    do_step1(State, if_match(RequestHeaders)).
+-spec if_match(state()) -> result().
+if_match(#{req := #req{headers = RequestHeaders}} = State) ->
+    do_if_match(State, get_if_match(RequestHeaders)).
 
--spec do_step1(state(), [etag()]) -> result() | no_return().
-do_step1(State, []) ->
-    step2(State);
-do_step1(#{etag := ETag} = State, ETags) ->
+-spec do_if_match(state(), [etag()]) -> result() | no_return().
+do_if_match(State, []) ->
+    unmodified_since(State);
+do_if_match(#{etag := ETag} = State, ETags) ->
     ?IF(lists:any(compare_strong(ETag), ETags),
-        step3(State),
+        unmodified_since(State),
         %% FIXME: ... the origin server MUST respond with either a) the 412
         %% (Precondition Failed) status code or b) one of the 2xx (Successful)
         %% status codes if the origin server has verified that a state change is
@@ -163,16 +119,76 @@ do_step1(#{etag := ETag} = State, ETags) ->
         %% immediately prior change made by the same user agent.
         precondition_failed()).
 
-%% @doc If-Unmodified-Since
--spec step2(state()) -> result() | no_return().
-step2(#{req := #req{headers = RequestHeaders}} = State) ->
-    do_step2(State, unmodified_since(RequestHeaders)).
+-spec get_if_match(elli:headers()) -> [etag()].
+get_if_match(Headers) ->
+    get_values(<<"If-Match">>, Headers).
 
--spec do_step2(state(), undefined) -> result();
-              (state(), binary()) -> no_return().
-do_step2(State, undefined) ->
-    step3(State);
-do_step2(_State, _Date) ->
+%%% ==================================================== [ 3.2.  If-None-Match ]
+
+%% @doc If-None-Match
+-spec none_match(state()) -> result().
+none_match(#{req := #req{headers = RequestHeaders}} = State) ->
+    do_none_match(State, get_none_match(RequestHeaders)).
+
+-spec do_none_match(state(), [etag()]) -> result().
+do_none_match(State, []) ->
+    if_modified_since(State);
+do_none_match(#{req := Req, etag := ETag} = State, ETags) ->
+    ?IF(lists:any(compare_weak(ETag), ETags),
+        ?IF(?GET_OR_HEAD(Req#req.method),
+            not_modified(State),
+            precondition_failed()),
+        if_range(State)).
+
+-spec get_none_match(elli:headers()) -> [etag()].
+get_none_match(Headers) ->
+    get_values(<<"If-None-Match">>, Headers).
+
+%%% ================================================ [ 3.3.  If-Modified-Since ]
+
+%% @doc If-Modified-Since
+-spec if_modified_since(state()) -> result().
+if_modified_since(#{req := Req} = State)
+  when ?GET_OR_HEAD(Req#req.method) ->
+    do_if_modified_since(State, get_modified_since(Req#req.headers));
+if_modified_since(State) ->
+    otherwise(State).
+
+-spec do_if_modified_since(state(), undefined | binary()) -> result().
+do_if_modified_since(State, undefined) ->
+    if_range(State);
+do_if_modified_since(#{req := Req, mtime := Mtime} = State, Date)
+  when ?GET_OR_HEAD(Req#req.method) ->
+    case convert_date(Mtime) of
+        bad_date ->
+            if_range(State);
+        Modified ->
+            case convert_date(Date) of
+                bad_date ->
+                    if_range(State);
+                Since ->
+                    ?IF(Modified > Since,
+                        if_range(State),
+                        otherwise(State))
+            end
+    end.
+
+-spec get_modified_since(elli:headers()) -> undefined | binary().
+get_modified_since(Headers) ->
+    get_value(<<"If-Modified-Since">>, Headers).
+
+%%% ============================================== [ 3.4.  If-Unmodified-Since ]
+
+%% @doc If-Unmodified-Since
+-spec unmodified_since(state()) -> result() | no_return().
+unmodified_since(#{req := #req{headers = RequestHeaders}} = State) ->
+    do_unmodified_since(State, get_unmodified_since(RequestHeaders)).
+
+-spec do_unmodified_since(state(), undefined) -> result();
+                         (state(), binary()) -> no_return().
+do_unmodified_since(State, undefined) ->
+    none_match(State);
+do_unmodified_since(_State, _Date) ->
     %% FIXME: The origin server MUST NOT perform the requested method if the
     %% selected representation's last modification date is more recent than the
     %% date provided in the field-value; instead the origin server MUST respond
@@ -188,64 +204,50 @@ do_step2(_State, _Date) ->
     %% made by the same user agent.
     precondition_failed().
 
-%% @doc If-None-Match
--spec step3(state()) -> result().
-step3(#{req := #req{headers = RequestHeaders}} = State) ->
-    do_step3(State, none_match(RequestHeaders)).
+-spec get_unmodified_since(elli:headers()) -> undefined | binary().
+get_unmodified_since(Headers) ->
+    get_value(<<"If-Unmodified-Since">>, Headers).
 
--spec do_step3(state(), [etag()]) -> result().
-do_step3(State, []) ->
-    step4(State);
-do_step3(#{req := Req, etag := ETag} = State, ETags) ->
-    ?IF(lists:any(compare_weak(ETag), ETags),
-        ?IF(?GET_OR_HEAD(Req#req.method),
-            not_modified(State),
-            precondition_failed()),
-        step5(State)).
+%%% ========================================================= [ 3.5.  If-Range ]
 
-%% @doc If-Modified-Since
--spec step4(state()) -> result().
-step4(#{req := Req} = State)
-  when ?GET_OR_HEAD(Req#req.method) ->
-    do_step4(State, modified_since(Req#req.headers));
-step4(State) ->
-    step6(State).
-
--spec do_step4(state(), undefined | binary()) -> result().
-do_step4(State, undefined) ->
-    step5(State);
-do_step4(#{req := Req, mtime := Mtime} = State, Date)
-  when ?GET_OR_HEAD(Req#req.method) ->
-    case convert_date(Mtime) of
-        bad_date ->
-            step5(State);
-        Modified ->
-            case convert_date(Date) of
-                bad_date ->
-                    step5(State);
-                Since ->
-                    ?IF(Modified > Since,
-                        step5(State),
-                        step6(State))
-            end
-    end.
+%% TODO: See Section 3.2. of RFC 7233
+%% https://tools.ietf.org/html/rfc7233#section-3.2
 
 %% @doc Range and If-Range
--spec step5(state()) -> result().
-step5(State) ->
+-spec if_range(state()) -> result().
+if_range(State) ->
     %% TODO: Range and If-Range
-    step6(State).
+    otherwise(State).
+
+%% if_range(Headers) -> error(nyi).
+
+%%% ================================================= [ 4.1.  304 Not Modified ]
+
+-spec not_modified(state()) -> {304, elli:headers(), <<>>}.
+not_modified(#{res := Res} = State) ->
+    {_Code, NewHeaders, _Body} = update_headers(Res, State),
+    PrunedHeaders = ifdef_delete(<<"ETag">>, <<"Last-Modified">>, NewHeaders),
+    {304, PrunedHeaders, <<>>}.
+
+%%% ========================================== [ 4.2.  412 Precondition Failed ]
+
+-spec precondition_failed() -> no_return().
+precondition_failed() ->
+    throw({412, [], <<>>}).
+
+%%% ========================================================= [ 6.  Precedence ]
 
 %% @doc Passthrough.
--spec step6(state()) -> result().
-step6(State) ->
-    do_step6(State, maps:find(res, State)).
+-spec otherwise(state()) -> result().
+otherwise(State) ->
+    do_otherwise(State, maps:find(res, State)).
 
--spec do_step6(state(), error) -> elli:req();
-              (state(), {ok, elli_handler:result()}) -> elli_handler:result().
-do_step6(#{req := Req}, error) ->
+-spec do_otherwise(state(), error) -> elli:req();
+                  (state(), {ok, elli_handler:result()}) ->
+                          elli_handler:result().
+do_otherwise(#{req := Req}, error) ->
     Req;
-do_step6(State, {ok, Res}) ->
+do_otherwise(State, {ok, Res}) ->
     update_headers(Res, State).
 
 %%% ================================================================ [ Helpers ]
@@ -310,7 +312,7 @@ update_element(Index, Tuple, Fun)
 
 -spec get_values(binary(), elli:headers()) -> [binary()].
 get_values(Key, Headers) ->
-    comma_split(proplists:get_value(Key, Headers, <<>>)).
+    comma_split(get_value(Key, Headers, <<>>)).
 
 -spec store(binary(), binary(), elli:headers()) -> elli:headers().
 store(Key, Value, List) ->
@@ -319,5 +321,15 @@ store(Key, Value, List) ->
 -spec comma_split(binary()) -> [binary()].
 comma_split(Subject) ->
     binary:split(Subject, [<<", ">>, <<",">>], [global, trim]).
+
+%% @doc If `List1' contains at least one entry associated with `Key1',
+%% delete all entries associated with `Key2'. Otherwise, return `List1'.
+-spec ifdef_delete(Key1, Key2, List1) -> List2 when
+      Key1  :: term(),
+      Key2  :: term(),
+      List1 :: [term()],
+      List2 :: [term()].
+ifdef_delete(Key1, Key2, List) ->
+    ?IF(is_defined(Key1, List), delete(Key2, List), List).
 
 %%% ==================================================================== [ EOF ]
