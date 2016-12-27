@@ -1,8 +1,8 @@
 %%% ============================================================ [ rfc7232.erl ]
-%%% @doc RFC 7232 implementation.
+%%% @doc IETF RFC 7232 implementation.
 %%% @author Eric Bailey <eric@ericb.me> [https://github.com/yurrriq]
 %%% @copyright 2016, elli-lib team
-%%% @reference <a href="https://tools.ietf.org/html/rfc7232">RFC 7232</a>
+%%% @reference <a href="https://tools.ietf.org/html/rfc7232">IETF RFC 7232</a>
 %%% @end
 %%% ==================================================================== [ EOH ]
 -module(rfc7232).
@@ -210,7 +210,7 @@ get_unmodified_since(Headers) ->
 
 %%% ========================================================= [ 3.5.  If-Range ]
 
-%% TODO: See Section 3.2. of RFC 7233
+%% TODO: See Section 3.2. of IETF RFC 7233
 %% https://tools.ietf.org/html/rfc7233#section-3.2
 
 %% @doc Range and If-Range

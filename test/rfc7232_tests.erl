@@ -1,3 +1,10 @@
+%%% ====================================================== [ rfc7232_tests.erl ]
+%%% @doc IETF RFC 7232 tests.
+%%% @author Eric Bailey <eric@ericb.me> [https://github.com/yurrriq]
+%%% @copyright 2016, elli-lib team
+%%% @reference <a href="https://tools.ietf.org/html/rfc7232">IETF RFC 7232</a>
+%%% @end
+%%% ==================================================================== [ EOH ]
 -module(rfc7232_tests).
 
 -include_lib("eunit/include/eunit.hrl").
