@@ -1,3 +1,4 @@
+%% -*- mode: erlang; flycheck-mode: nil -*-
 [_|Args] = init:get_plain_arguments(),          % rebar3 'commands' and options
 lists:member("doc", Args) andalso application:ensure_all_started(inets),
 case os:getenv("TRAVIS") of
