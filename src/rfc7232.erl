@@ -10,8 +10,8 @@
 %% API.
 -export([init/3, init/4]).
 
--import(proplists, [get_value/2]).
--import(elli_cache_util, [convert_date/1,
+-import(proplists, [delete/2, get_value/2]).
+-import(elli_cache_util, [compare_date/3,
                           get_values/2, ifdef_delete/3, store/3,
                           update_element/3]).
 
@@ -159,18 +159,9 @@ do_if_modified_since(State, undefined) ->
     if_range(State);
 do_if_modified_since(#{req := Req, mtime := Mtime} = State, Date)
   when ?GET_OR_HEAD(Req#req.method) ->
-    case convert_date(Mtime) of
-        bad_date ->
-            if_range(State);
-        Modified ->
-            case convert_date(Date) of
-                bad_date ->
-                    if_range(State);
-                Since ->
-                    ?IF(Modified > Since,
-                        if_range(State),
-                        otherwise(State))
-            end
+    case compare_date(fun erlang:'>'/2, Mtime, Date) of
+        {just, false} -> otherwise(State);
+        _             -> if_range(State)
     end.
 
 -spec get_modified_since(elli:headers()) -> undefined | binary().

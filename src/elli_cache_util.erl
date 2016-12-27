@@ -6,11 +6,13 @@
 %%% ==================================================================== [ EOH ]
 -module(elli_cache_util).
 
+-compile({parse_transform, do}).
+
 %% Binary Utils.
 -export([comma_split/1]).
 
 %% Date Utils.
--export([convert_date/1]).
+-export([convert_date/1, compare_date/3]).
 
 %% Proplist Utils.
 -export([get_values/2, ifdef_delete/3, store/3]).
@@ -30,19 +32,33 @@ comma_split(Subject) ->
 
 %%% ============================================================= [ Date Utils ]
 
--spec convert_date(binary()) -> non_neg_integer() | bad_date.
-convert_date(Bin) ->
+-spec convert_date(Date) -> maybe_m:maybe(Seconds) when
+      Date    :: binary() | calendar:datetime(),
+      Seconds :: non_neg_integer().
+convert_date(Bin) when is_binary(Bin) ->
     ReqDate = binary_to_list(Bin),
     case httpd_util:convert_request_date(ReqDate) of
-        bad_date ->
-            bad_date;
-        DateTime ->
-            Seconds = calendar:datetime_to_gregorian_seconds(DateTime),
-            %% FIXME: use Date header, if present
-            Now = calendar:universal_time(),
-            %% See 2.2.1
-            max(Seconds, calendar:datetime_to_gregorian_seconds(Now))
-    end.
+        bad_date -> maybe_m:fail(Bin);
+        DateTime -> convert_date(DateTime)
+    end;
+convert_date({_Date, _Time} = DateTime) ->
+    Seconds = calendar:datetime_to_gregorian_seconds(DateTime),
+    %% FIXME: use Date header, if present
+    Now = calendar:universal_time(),
+    NowSeconds = calendar:datetime_to_gregorian_seconds(Now),
+    %% See 2.2.1
+    maybe_m:return(?IF(Seconds > NowSeconds, NowSeconds, Seconds)).
+
+-spec compare_date(Comp, Date1, Date2) -> maybe_m:maybe(boolean()) when
+      Comp     :: fun((Seconds1, Seconds2) -> boolean()),
+      Seconds1 :: non_neg_integer(),
+      Seconds2 :: non_neg_integer(),
+      Date1    :: binary() | calendar:datetime(),
+      Date2    :: binary() | calendar:datetime().
+compare_date(Comp, Date1, Date2) ->
+    do([maybe_m || Seconds1 <- convert_date(Date1),
+                   Seconds2 <- convert_date(Date2),
+                   return(Comp(Seconds1, Seconds2))]).
 
 %%% ========================================================= [ Proplist Utils ]
 
