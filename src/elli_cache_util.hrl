@@ -2,3 +2,5 @@
 -define(GET_OR_HEAD(M), ('GET' =:= M orelse 'HEAD' =:= M)).
 -define(OK_GET_OR_HEAD(S, M), ?OK_200(S) andalso ?GET_OR_HEAD(M)).
 -define(IF(P, T, E), case P of true -> T; false -> E end).
+-define(WEAK(ETag), <<"W/\"">> =:= binary_part(ETag, {0, 3})).
+-define(STRONG(ETag), <<"\"">> =:= binary_part(ETag, {0, 1})).

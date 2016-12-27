@@ -10,7 +10,10 @@
 %% API.
 -export([init/3, init/4]).
 
--import(proplists, [delete/2, get_value/2, get_value/3, is_defined/2]).
+-import(proplists, [get_value/2]).
+-import(elli_cache_utils, [convert_date/1,
+                           get_values/2, ifdef_delete/3, store/3,
+                           update_element/3]).
 
 -ifdef(TEST).
 -compile([export_all]).
@@ -18,9 +21,6 @@
 
 -include("elli_cache_util.hrl").
 -include_lib("elli/include/elli.hrl").
-
-%% Macros.
--define(WEAK(ETag), <<"W/">> =:= binary_part(ETag, {0, 2})).
 
 %%% ================================================================== [ Types ]
 
@@ -219,8 +219,6 @@ if_range(State) ->
     %% TODO: Range and If-Range
     otherwise(State).
 
-%% if_range(Headers) -> error(nyi).
-
 %%% ================================================= [ 4.1.  304 Not Modified ]
 
 -spec not_modified(state()) -> {304, elli:headers(), <<>>}.
@@ -251,20 +249,6 @@ do_otherwise(State, {ok, Res}) ->
     update_headers(Res, State).
 
 %%% ================================================================ [ Helpers ]
-
--spec convert_date(binary()) -> non_neg_integer() | bad_date.
-convert_date(Bin) ->
-    ReqDate = binary_to_list(Bin),
-    case httpd_util:convert_request_date(ReqDate) of
-        bad_date ->
-            bad_date;
-        DateTime ->
-            Seconds = calendar:datetime_to_gregorian_seconds(DateTime),
-            %% FIXME: use Date header, if present
-            Now = calendar:universal_time(),
-            %% See 2.2.1
-            max(Seconds, calendar:datetime_to_gregorian_seconds(Now))
-    end.
 
 -spec update_headers(elli_handler:result(), state()) -> elli_handler:result().
 update_headers(Res, State) ->
@@ -300,36 +284,5 @@ allowed_header({<<"Last-Modified">>, _}) -> true;
 allowed_header({<<"Vary">>, _}) -> true;
 allowed_header(_) -> false.
 
--spec update_element(Index, Tuple1, Fun) -> Tuple2 when
-      Index  :: pos_integer(),                  % 1..tuple_size(Tuple1)
-      Tuple1 :: tuple(),
-      Fun    :: fun((term()) -> term()),
-      Tuple2 :: tuple().
-update_element(Index, Tuple, Fun)
-  when is_tuple(Tuple), tuple_size(Tuple) >= Index ->
-    Value = Fun(element(Index, Tuple)),
-    setelement(Index, Tuple, Value).
-
--spec get_values(binary(), elli:headers()) -> [binary()].
-get_values(Key, Headers) ->
-    comma_split(get_value(Key, Headers, <<>>)).
-
--spec store(binary(), binary(), elli:headers()) -> elli:headers().
-store(Key, Value, List) ->
-    lists:keystore(Key, 1, List, {Key, Value}).
-
--spec comma_split(binary()) -> [binary()].
-comma_split(Subject) ->
-    binary:split(Subject, [<<", ">>, <<",">>], [global, trim]).
-
-%% @doc If `List1' contains at least one entry associated with `Key1',
-%% delete all entries associated with `Key2'. Otherwise, return `List1'.
--spec ifdef_delete(Key1, Key2, List1) -> List2 when
-      Key1  :: term(),
-      Key2  :: term(),
-      List1 :: [term()],
-      List2 :: [term()].
-ifdef_delete(Key1, Key2, List) ->
-    ?IF(is_defined(Key1, List), delete(Key2, List), List).
 
 %%% ==================================================================== [ EOF ]
