@@ -47,7 +47,7 @@ convert_date(Bin::binary()) -&gt; non_neg_integer() | bad_date
 ### get_values/2 ###
 
 <pre><code>
-get_values(Key::binary(), Headers::<a href="http://raw.github.com/elli-lib/elli/develop/doc/elli.md#type-headers">elli:headers()</a>) -&gt; [binary()]
+get_values(Key::binary(), Headers::<a href="https://github.com/elli-lib/elli/blob/develop/doc/elli.md#type-headers">elli:headers()</a>) -&gt; [binary()]
 </code></pre>
 <br />
 
@@ -69,7 +69,7 @@ delete all entries associated with `Key2`. Otherwise, return `List1`.
 ### store/3 ###
 
 <pre><code>
-store(Key::binary(), Value::binary(), List::<a href="http://raw.github.com/elli-lib/elli/develop/doc/elli.md#type-headers">elli:headers()</a>) -&gt; <a href="http://raw.github.com/elli-lib/elli/develop/doc/elli.md#type-headers">elli:headers()</a>
+store(Key::binary(), Value::binary(), List::<a href="https://github.com/elli-lib/elli/blob/develop/doc/elli.md#type-headers">elli:headers()</a>) -&gt; <a href="https://github.com/elli-lib/elli/blob/develop/doc/elli.md#type-headers">elli:headers()</a>
 </code></pre>
 <br />
 

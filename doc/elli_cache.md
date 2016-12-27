@@ -45,7 +45,7 @@ config() = [{mod, Mod::module()}]
 ### get_modified/2 ###
 
 <pre><code>
-get_modified(Req::<a href="http://raw.github.com/elli-lib/elli/develop/doc/elli.md#type-req">elli:req()</a>, Args::<a href="#type-config">config()</a>) -&gt; <a href="maybe_m.md#type-maybe">maybe_m:maybe</a>(<a href="calendar.md#type-datetime">calendar:datetime()</a>)
+get_modified(Req::<a href="https://github.com/elli-lib/elli/blob/develop/doc/elli.md#type-req">elli:req()</a>, Args::<a href="#type-config">config()</a>) -&gt; <a href="maybe_m.md#type-maybe">maybe_m:maybe</a>(<a href="calendar.md#type-datetime">calendar:datetime()</a>)
 </code></pre>
 <br />
 
@@ -58,7 +58,7 @@ return `{just, Mod:get_modified(Req, Args)}`. Otherwise, return `nothing`.
 ### get_size/2 ###
 
 <pre><code>
-get_size(Req::<a href="http://raw.github.com/elli-lib/elli/develop/doc/elli.md#type-req">elli:req()</a>, Args::<a href="#type-config">config()</a>) -&gt; <a href="maybe_m.md#type-maybe">maybe_m:maybe</a>(non_neg_integer())
+get_size(Req::<a href="https://github.com/elli-lib/elli/blob/develop/doc/elli.md#type-req">elli:req()</a>, Args::<a href="#type-config">config()</a>) -&gt; <a href="maybe_m.md#type-maybe">maybe_m:maybe</a>(non_neg_integer())
 </code></pre>
 <br />
 
