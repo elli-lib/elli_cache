@@ -9,6 +9,18 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+%%% ============================================================= [ Unit Tests ]
+
+comparison_test_() ->
+    [
+     compare(<<"W/\"1\"">>, <<"W/\"1\"">>, no_match, match),
+     compare(<<"W/\"1\"">>, <<"W/\"2\"">>, no_match, no_match),
+     compare(<<"W/\"1\"">>, <<"\"1\"">>, no_match, match),
+     compare(<<"\"1\"">>, <<"\"1\"">>, match, match)
+    ].
+
+%%% ===================================================== [ Internal Functions ]
+
 compare(ETag1, ETag2, Strong, Weak) ->
     Comparisons = [
                    {<<"Strong">>, fun rfc7232:compare_strong/2, Strong},
@@ -28,10 +40,4 @@ assertion(Compare, ETag1, ETag2, match) ->
 assertion(Compare, ETag1, ETag2, no_match) ->
     ?_assertNot(Compare(ETag1, ETag2)).
 
-comparison_test_() ->
-    [
-     compare(<<"W/\"1\"">>, <<"W/\"1\"">>, no_match, match),
-     compare(<<"W/\"1\"">>, <<"W/\"2\"">>, no_match, no_match),
-     compare(<<"W/\"1\"">>, <<"\"1\"">>, no_match, match),
-     compare(<<"\"1\"">>, <<"\"1\"">>, match, match)
-    ].
+%%% ==================================================================== [ EOF ]
