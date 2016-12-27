@@ -15,11 +15,8 @@
 
 ## Build
 
-<pre lang="erlang">
-<![CDATA[
-rebar3 compile
-]]>
-</pre>
+<pre lang="erlang"><![CDATA[rebar3 compile]]></pre>
+
 
 ## License
 
