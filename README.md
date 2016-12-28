@@ -42,8 +42,8 @@ rebar3 compile
 
 
 <table width="100%" border="0" summary="list of modules">
-<tr><td><a href="https://github.com/elli-lib/elli_cache/blob/feature/rfc7232/doc/elli_cache.md" class="module">elli_cache</a></td></tr>
-<tr><td><a href="https://github.com/elli-lib/elli_cache/blob/feature/rfc7232/doc/elli_cache_util.md" class="module">elli_cache_util</a></td></tr>
-<tr><td><a href="https://github.com/elli-lib/elli_cache/blob/feature/rfc7232/doc/elli_middleware_cache.md" class="module">elli_middleware_cache</a></td></tr>
-<tr><td><a href="https://github.com/elli-lib/elli_cache/blob/feature/rfc7232/doc/rfc7232.md" class="module">rfc7232</a></td></tr></table>
+<tr><td><a href="https://github.com/elli-lib/elli_cache/blob/develop/doc/elli_cache.md" class="module">elli_cache</a></td></tr>
+<tr><td><a href="https://github.com/elli-lib/elli_cache/blob/develop/doc/elli_cache_util.md" class="module">elli_cache_util</a></td></tr>
+<tr><td><a href="https://github.com/elli-lib/elli_cache/blob/develop/doc/elli_middleware_cache.md" class="module">elli_middleware_cache</a></td></tr>
+<tr><td><a href="https://github.com/elli-lib/elli_cache/blob/develop/doc/rfc7232.md" class="module">rfc7232</a></td></tr></table>
 
