@@ -213,22 +213,22 @@ if_range(#{req := #req{headers = RequestHeaders} = Req} = State)
 if_range(State) ->
     otherwise(State).
 
--spec do_if_range(state(), undefined) -> result();
-                 (state(), binary()) -> no_return().
+-spec do_if_range(state(), undefined | binary()) -> result().
 do_if_range(State, undefined) ->
     otherwise(State);
 do_if_range(#{etag := ETag, mtime := Mtime} = State, ETagOrDate) ->
     NewState =
         ?IF(is_etag(ETagOrDate),
-            %% If-Range: ETag
+            %% If-Range = entity-tag
             ?IF(compare_strong(ETag, ETagOrDate), State, delete_range(State)),
-            %% If-Range: Date
+            %% If-Range = HTTP-date
             case compare_date(fun erlang:'=:='/2, Mtime, ETagOrDate) of
                 {just, true} -> State;
                 _            -> delete_range(State)
             end),
     otherwise(NewState).
 
+-spec delete_range(state()) -> state().
 delete_range(#{req := #req{headers = Headers} = Req} = State) ->
     maps:update(req, Req#req{headers = delete(<<"Range">>, Headers)}, State).
 
