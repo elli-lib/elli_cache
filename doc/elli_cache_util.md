@@ -16,7 +16,7 @@ __Authors:__ Eric Bailey ([`eric@ericb.me`](mailto:eric@ericb.me)) (_web site:_ 
 ## Function Index ##
 
 
-<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#comma_split-1">comma_split/1</a></td><td></td></tr><tr><td valign="top"><a href="#convert_date-1">convert_date/1</a></td><td></td></tr><tr><td valign="top"><a href="#get_values-2">get_values/2</a></td><td></td></tr><tr><td valign="top"><a href="#ifdef_delete-3">ifdef_delete/3</a></td><td>If <code>List1</code> contains at least one entry associated with <code>Key1</code>,
+<table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#comma_split-1">comma_split/1</a></td><td></td></tr><tr><td valign="top"><a href="#compare_date-3">compare_date/3</a></td><td></td></tr><tr><td valign="top"><a href="#convert_date-1">convert_date/1</a></td><td></td></tr><tr><td valign="top"><a href="#get_values-2">get_values/2</a></td><td></td></tr><tr><td valign="top"><a href="#ifdef_delete-3">ifdef_delete/3</a></td><td>If <code>List1</code> contains at least one entry associated with <code>Key1</code>,
 delete all entries associated with <code>Key2</code>.</td></tr><tr><td valign="top"><a href="#store-3">store/3</a></td><td></td></tr><tr><td valign="top"><a href="#update_element-3">update_element/3</a></td><td></td></tr></table>
 
 
@@ -33,14 +33,25 @@ comma_split(Subject::binary()) -&gt; [binary()]
 </code></pre>
 <br />
 
+<a name="compare_date-3"></a>
+
+### compare_date/3 ###
+
+<pre><code>
+compare_date(Comp, Date1, Date2) -&gt; <a href="maybe_m.md#type-maybe">maybe_m:maybe</a>(boolean())
+</code></pre>
+
+<ul class="definitions"><li><code>Comp = fun((Seconds1, Seconds2) -&gt; boolean())</code></li><li><code>Seconds1 = non_neg_integer()</code></li><li><code>Seconds2 = non_neg_integer()</code></li><li><code>Date1 = binary() | <a href="calendar.md#type-datetime">calendar:datetime()</a></code></li><li><code>Date2 = binary() | <a href="calendar.md#type-datetime">calendar:datetime()</a></code></li></ul>
+
 <a name="convert_date-1"></a>
 
 ### convert_date/1 ###
 
 <pre><code>
-convert_date(Bin::binary()) -&gt; non_neg_integer() | bad_date
+convert_date(Date) -&gt; <a href="maybe_m.md#type-maybe">maybe_m:maybe</a>(Seconds)
 </code></pre>
-<br />
+
+<ul class="definitions"><li><code>Date = binary() | <a href="calendar.md#type-datetime">calendar:datetime()</a></code></li><li><code>Seconds = non_neg_integer()</code></li></ul>
 
 <a name="get_values-2"></a>
 
