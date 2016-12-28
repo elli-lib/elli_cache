@@ -176,10 +176,10 @@ unmodified_since(#{req := #req{headers = RequestHeaders}} = State) ->
     do_unmodified_since(State, get_unmodified_since(RequestHeaders)).
 
 -spec do_unmodified_since(state(), undefined) -> result();
-                         (state(), binary()) -> no_return().
+                         (state(), binary()) -> no_return() | result().
 do_unmodified_since(State, undefined) ->
     none_match(State);
-do_unmodified_since(_State, _Date) ->
+do_unmodified_since(#{mtime := Mtime} = State, Date) ->
     %% FIXME: The origin server MUST NOT perform the requested method if the
     %% selected representation's last modification date is more recent than the
     %% date provided in the field-value; instead the origin server MUST respond
@@ -193,7 +193,10 @@ do_unmodified_since(_State, _Date) ->
     %% server MUST NOT send a validator header field in the response unless it
     %% can verify that the request is a duplicate of an immediately prior change
     %% made by the same user agent.
-    precondition_failed().
+    case compare_date(fun erlang:'>'/2, Mtime, Date) of
+        {just, true} -> precondition_failed();
+        _            -> none_match(State)
+    end.
 
 -spec get_unmodified_since(elli:headers()) -> undefined | binary().
 get_unmodified_since(Headers) ->
