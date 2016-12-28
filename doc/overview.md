@@ -1,6 +1,6 @@
 @copyright 2016 elli-lib team.
 @title elli_cache
-@version 0.0.1
+@version 0.1.0
 
 @doc
 
@@ -15,11 +15,8 @@
 
 ## Build
 
-<pre lang="erlang">
-<![CDATA[
-rebar3 compile
-]]>
-</pre>
+<pre lang="erlang"><![CDATA[rebar3 compile]]></pre>
+
 
 ## License
 

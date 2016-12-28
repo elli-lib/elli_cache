@@ -4,7 +4,7 @@
 
 Copyright (c) 2016 elli-lib team.
 
-__Version:__ 0.0.1
+__Version:__ 0.1.0
 
 [![Hex.pm][hex badge]][hex link]
 [![Hex.pm][hex downloads]][hex link]
@@ -18,11 +18,7 @@ __Version:__ 0.0.1
 ## Build
 
 ```erlang
-
-
 rebar3 compile
-
-
 ```
 
 ## License
@@ -47,5 +43,7 @@ rebar3 compile
 
 <table width="100%" border="0" summary="list of modules">
 <tr><td><a href="elli_cache.md" class="module">elli_cache</a></td></tr>
-<tr><td><a href="elli_middleware_cache.md" class="module">elli_middleware_cache</a></td></tr></table>
+<tr><td><a href="elli_cache_util.md" class="module">elli_cache_util</a></td></tr>
+<tr><td><a href="elli_middleware_cache.md" class="module">elli_middleware_cache</a></td></tr>
+<tr><td><a href="rfc7232.md" class="module">rfc7232</a></td></tr></table>
 
