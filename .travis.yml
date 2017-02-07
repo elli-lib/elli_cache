@@ -5,7 +5,7 @@ before_script:
 - wget https://s3.amazonaws.com/rebar3/rebar3
 - chmod +x rebar3
 env: PATH=$PATH:.
-script: rebar3 eunit && rebar3 as test coveralls send || cat rebar3.crashdump
+script: rebar3 as test do xref, dialyzer, eunit, coveralls send
 cache:
   directories:
   - $HOME/.cache/rebar3/
