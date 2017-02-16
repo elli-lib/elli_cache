@@ -4,7 +4,7 @@
 
 Copyright (c) 2016 elli-lib team.
 
-__Version:__ 0.1.0
+__Version:__ 0.1.1
 
 [![Hex.pm][hex badge]][hex link]
 [![Hex.pm][hex downloads]][hex link]
