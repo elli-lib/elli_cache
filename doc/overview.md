@@ -1,6 +1,6 @@
 @copyright 2016 elli-lib team.
 @title elli_cache
-@version 0.1.0
+@version 0.1.1
 
 @doc
 
