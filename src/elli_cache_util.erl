@@ -35,12 +35,16 @@ comma_split(Subject) ->
 -spec convert_date(Date) -> maybe_m:maybe(Seconds) when
       Date    :: binary() | calendar:datetime(),
       Seconds :: non_neg_integer().
-convert_date(Bin) when is_binary(Bin) ->
+%% NOTE: convert_request_date/1 throws a function clause error
+%% for input shorter than four characters.
+convert_date(Bin) when is_binary(Bin) andalso size(Bin) >= 4 ->
     ReqDate = binary_to_list(Bin),
     case httpd_util:convert_request_date(ReqDate) of
         bad_date -> maybe_m:fail(Bin);
         DateTime -> convert_date(DateTime)
     end;
+convert_date(Bin) when is_binary(Bin) ->
+    maybe_m:fail(Bin);
 convert_date({_Date, _Time} = DateTime) ->
     Seconds = calendar:datetime_to_gregorian_seconds(DateTime),
     %% FIXME: use Date header, if present
