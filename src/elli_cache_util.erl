@@ -15,7 +15,7 @@
 -export([convert_date/1, compare_date/3]).
 
 %% Proplist Utils.
--export([get_values/2, ifdef_delete/3, store/3]).
+-export([maybe_get_value/2, get_values/2, ifdef_delete/3, store/3]).
 
 %% Tuple Utils.
 -export([update_element/3]).
@@ -65,6 +65,15 @@ compare_date(Comp, Date1, Date2) ->
                    return(Comp(Seconds1, Seconds2))]).
 
 %%% ========================================================= [ Proplist Utils ]
+
+-spec maybe_get_value(binary(), elli:headers()) -> maybe_m:maybe(binary()).
+maybe_get_value(_Key, []) ->
+    nothing;
+maybe_get_value(Key, Headers) ->
+    case get_value(Key, Headers) of
+        undefined -> nothing;
+        Value     -> {just, Value}
+    end.
 
 -spec get_values(binary(), elli:headers()) -> [binary()].
 get_values(Key, Headers) ->
