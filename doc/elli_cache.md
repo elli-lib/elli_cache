@@ -51,7 +51,7 @@ get_modified(Req::<a href="https://github.com/elli-lib/elli/blob/develop/doc/ell
 
 Maybe get the last modified date for a request.
 If `{mod, Mod}` is present in `Args` and `Mod:get_modified/2` is exported,
-return `{just, Mod:get_modified(Req, Args)}`. Otherwise, return `nothing`.
+return `Mod:get_modified(Req, Args)`. Otherwise, return `nothing`.
 
 <a name="get_size-2"></a>
 
@@ -64,5 +64,5 @@ get_size(Req::<a href="https://github.com/elli-lib/elli/blob/develop/doc/elli.md
 
 Maybe get the size of the response to a request.
 If `{mod, Mod}` is present in `Args` and `Mod:get_size/2` is exported,
-return `{just, Mod:get_size(Req, Args)}`. Otherwise, return `nothing`.
+return `Mod:get_size(Req, Args)`. Otherwise, return `nothing`.
 
