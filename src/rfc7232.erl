@@ -10,10 +10,11 @@
 %% API.
 -export([init/3, init/4]).
 
--import(proplists, [delete/2, get_value/2]).
--import(elli_cache_util, [compare_date/3,
-                          get_values/2, ifdef_delete/3, store/3,
-                          update_element/3]).
+-import(proplists, [delete/2]).
+-import(elli_cache_util,
+        [compare_date/3,
+         maybe_get_value/2, get_values/2, ifdef_delete/3, store/3,
+         update_element/3]).
 
 -ifdef(TEST).
 -compile([export_all]).
@@ -37,8 +38,8 @@
 
 %% Internal state.
 -type state() :: #{req   => elli:req(),
-                   mtime => calendar:datetime(),
-                   etag  => etag(),
+                   mtime => maybe_m:maybe(calendar:datetime()),
+                   etag  => maybe_m:maybe(etag()),
                    res   => elli_handler:result()
                   }.
 
@@ -48,15 +49,15 @@
 -spec init(Req, Mtime, ETag) -> result() | no_return() when
       Req   :: elli:req(),
       Mtime :: calendar:datetime(),
-      ETag  :: etag().
+      ETag  :: maybe_m:maybe(etag()).
 init(Req, Mtime, ETag) ->
     State = #{req => Req, mtime => Mtime, etag => ETag},
     if_match(State).
 
 -spec init(Req, Mtime, ETag, Res) -> elli_handler:result() when
       Req   :: elli:req(),
-      Mtime :: calendar:datetime(),
-      ETag  :: etag(),
+      Mtime :: maybe_m:maybe(calendar:datetime()),
+      ETag  :: maybe_m:maybe(etag()),
       Res   :: elli_handler:result().
 init(Req, Mtime, ETag, Res) ->
     State = #{req => Req, mtime => Mtime, etag => ETag, res => Res},
@@ -94,6 +95,8 @@ compare_weak(ETag1, ETag2) ->
     ETag1 =:= ETag2.
 
 %%% ========================================================= [ 3.1.  If-Match ]
+%%% NOTE: "The If-Match header field can be ignored by caches
+%%% and intermediaries because it is not applicable to a stored response."
 
 %% @doc If-Match
 -spec if_match(state()) -> result().
@@ -103,7 +106,11 @@ if_match(#{req := #req{headers = RequestHeaders}} = State) ->
 -spec do_if_match(state(), [etag()]) -> result() | no_return().
 do_if_match(State, []) ->
     unmodified_since(State);
-do_if_match(#{etag := ETag} = State, ETags) ->
+do_if_match(#{etag := nothing}, _Etags) ->
+    precondition_failed();
+do_if_match(#{etag := _JustETag} = State, [<<"*">>]) ->
+    unmodified_since(State);
+do_if_match(#{etag := {just, ETag}} = State, ETags) ->
     ?IF(lists:any(compare_strong(ETag), ETags),
         unmodified_since(State),
         %% FIXME: ... the origin server MUST respond with either a) the 412
@@ -133,7 +140,9 @@ none_match(#{req := #req{headers = RequestHeaders}} = State) ->
 -spec do_none_match(state(), [etag()]) -> result().
 do_none_match(State, []) ->
     if_modified_since(State);
-do_none_match(#{req := Req, etag := ETag} = State, ETags) ->
+do_none_match(#{etag := nothing} = State, _ETags) ->
+    if_range(State);
+do_none_match(#{req := Req, etag := {just, ETag}} = State, ETags) ->
     ?IF(lists:any(compare_weak(ETag), ETags),
         ?IF(?GET_OR_HEAD(Req#req.method),
             not_modified(State),
@@ -154,19 +163,21 @@ if_modified_since(#{req := Req} = State)
 if_modified_since(State) ->
     otherwise(State).
 
--spec do_if_modified_since(state(), undefined | binary()) -> result().
-do_if_modified_since(State, undefined) ->
-    if_range(State);
-do_if_modified_since(#{req := Req, mtime := Mtime} = State, Date)
+-spec do_if_modified_since(state(), maybe_m:maybe(binary())) -> result().
+do_if_modified_since(#{mtime := Mtime} = State, Date)
+  when nothing =:= Mtime; nothing =:= Date ->
+    otherwise(State);
+do_if_modified_since(#{req := Req, mtime := {just, Mtime}} = State,
+                     {just, Date})
   when ?GET_OR_HEAD(Req#req.method) ->
     case compare_date(fun erlang:'>'/2, Mtime, Date) of
         {just, false} -> otherwise(State);
         _             -> if_range(State)
     end.
 
--spec get_modified_since(elli:headers()) -> undefined | binary().
+-spec get_modified_since(elli:headers()) -> maybe_m:maybe(binary()).
 get_modified_since(Headers) ->
-    get_value(<<"If-Modified-Since">>, Headers).
+    maybe_get_value(<<"If-Modified-Since">>, Headers).
 
 %%% ============================================== [ 3.4.  If-Unmodified-Since ]
 
@@ -198,9 +209,9 @@ do_unmodified_since(#{mtime := Mtime} = State, Date) ->
         _            -> none_match(State)
     end.
 
--spec get_unmodified_since(elli:headers()) -> undefined | binary().
+-spec get_unmodified_since(elli:headers()) -> maybe_m:maybe(binary()).
 get_unmodified_since(Headers) ->
-    get_value(<<"If-Unmodified-Since">>, Headers).
+    maybe_get_value(<<"If-Unmodified-Since">>, Headers).
 
 %%% ========================================================= [ 3.5.  If-Range ]
 
@@ -210,14 +221,17 @@ if_range(#{req := #req{headers = RequestHeaders} = Req} = State)
   when ?GET_OR_HEAD(Req#req.method) ->
     case get_range(RequestHeaders) of
         %% If there's no Range header, don't bother with If-Range.
-        undefined -> otherwise(State);
-        _Range    -> do_if_range(State, get_if_range(RequestHeaders))
+        []     -> otherwise(State);
+        _Range -> do_if_range(State, get_if_range(RequestHeaders))
     end;
 if_range(State) ->
     otherwise(State).
 
--spec do_if_range(state(), undefined | binary()) -> result().
-do_if_range(State, undefined) ->
+-spec do_if_range(state(), maybe_m:maybe(binary())) -> result().
+do_if_range(State, nothing) ->
+    otherwise(State);
+%% NOTE: No ETag implies no last modified date.
+do_if_range(#{etag := nothing} = State, _ETagOrDate) ->
     otherwise(State);
 do_if_range(#{etag := ETag, mtime := Mtime} = State, ETagOrDate) ->
     NewState =
@@ -235,9 +249,9 @@ do_if_range(#{etag := ETag, mtime := Mtime} = State, ETagOrDate) ->
 delete_range(#{req := #req{headers = Headers} = Req} = State) ->
     maps:update(req, Req#req{headers = delete(<<"Range">>, Headers)}, State).
 
--spec get_if_range(Headers :: elli:headers()) -> undefined | binary().
+-spec get_if_range(Headers :: elli:headers()) -> maybe_m:maybe(binary()).
 get_if_range(Headers) ->
-    get_value(<<"If-Range">>, Headers).
+    maybe_get_value(<<"If-Range">>, Headers).
 
 %% @doc Determine with a given binary is an entity-tag or a date.
 %% Per IETF RFC 7233 Section 3.2, "A valid entity-tag can be distinguished from
@@ -246,7 +260,7 @@ get_if_range(Headers) ->
 is_etag(ETag) when ?STRONG(ETag); ?WEAK(ETag) -> true;
 is_etag(_Date)                                -> false.
 
--spec get_range(Headers :: elli:headers()) -> no_return().
+-spec get_range(Headers :: elli:headers()) -> [binary()].
 get_range(Headers) ->
     get_values(<<"Range">>, Headers).
 
@@ -287,15 +301,15 @@ update_headers(Res, State) ->
     Fun = fun(Headers) -> maps:fold(fun update_headers/3, Headers, State) end,
     update_element(2, NewRes, Fun).
 
--spec update_headers(etag, etag(), elli:headers()) ->
+-spec update_headers(etag, {just, etag()}, elli:headers()) ->
                             elli:headers();
-                    (mtime, calendar:datetime(), elli:headers()) ->
+                    (mtime, {just, calendar:datetime()}, elli:headers()) ->
                             elli:headers();
                     (_Key, _Value, elli:headers()) ->
                             elli:headers().
-update_headers(etag, ETag, Headers) ->
+update_headers(etag, {just, ETag}, Headers) ->
     store(<<"ETag">>, ETag, Headers);
-update_headers(mtime, Mtime, Headers) ->
+update_headers(mtime, {just, Mtime}, Headers) ->
     LastModified = list_to_binary(httpd_util:rfc1123_date(Mtime)),
     store(<<"Last-Modified">>, LastModified, Headers);
 update_headers(_Key, _Value, Headers) ->

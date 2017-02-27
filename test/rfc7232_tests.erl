@@ -21,7 +21,7 @@ comparison_test_() ->
 
 %% FIXME: obviously
 get_if_range_test() ->
-    ?assertMatch(<<>>, rfc7232:get_if_range([{<<"If-Range">>, <<>>}])).
+    ?assertMatch({just, <<>>}, rfc7232:get_if_range([{<<"If-Range">>, <<>>}])).
 
 is_etag_test_() ->
     Data = [ {<<"Fri, 26 Mar 2010 00:05:00 GMT">>, false}

@@ -24,25 +24,25 @@
 -callback get_modified(Req, Args) -> Mtime when
       Req   :: elli:req(),
       Args  :: elli_handler:callback_args(),
-      Mtime :: calendar:datetime().
+      Mtime :: maybe_m:maybe(calendar:datetime()).
 
 -callback get_size(Req, Args) -> Size when
       Req  :: elli:req(),
       Args :: elli_handler:callback_args(),
-      Size :: non_neg_integer().
+      Size :: maybe_m:maybe(non_neg_integer()).
 
 %%% ================================================================ [ Helpers ]
 
 %% @doc Maybe get the last modified date for a request.
 %% If `{mod, Mod}' is present in `Args' and `Mod:get_modified/2' is exported,
-%% return `{just, Mod:get_modified(Req, Args)}'. Otherwise, return `nothing'.
+%% return `Mod:get_modified(Req, Args)'. Otherwise, return `nothing'.
 -spec get_modified(elli:req(), config()) -> maybe_m:maybe(calendar:datetime()).
 get_modified(Req, Args) ->
     maybe_m:'>>='(get_mod(Args), maybe_apply(_, get_modified, Req, Args)).
 
 %% @doc Maybe get the size of the response to a request.
 %% If `{mod, Mod}' is present in `Args' and `Mod:get_size/2' is exported,
-%% return `{just, Mod:get_size(Req, Args)}'. Otherwise, return `nothing'.
+%% return `Mod:get_size(Req, Args)'. Otherwise, return `nothing'.
 -spec get_size(elli:req(), config()) -> maybe_m:maybe(non_neg_integer()).
 get_size(Req, Args) ->
     maybe_m:'>>='(get_mod(Args), maybe_apply(_, get_size, Req, Args)).
@@ -61,7 +61,7 @@ get_mod(Args) ->
 maybe_apply(Module, Function, Req, Args) ->
     do([maybe_m ||
         ?IF(erlang:function_exported(Module, Function, 2),
-            return(Module:Function(Req, Args)),
+            Module:Function(Req, Args),
             fail("Not exported"))]).
 
 %%% ==================================================================== [ EOF ]
