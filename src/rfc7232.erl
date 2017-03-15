@@ -186,11 +186,11 @@ get_modified_since(Headers) ->
 unmodified_since(#{req := #req{headers = RequestHeaders}} = State) ->
     do_unmodified_since(State, get_unmodified_since(RequestHeaders)).
 
--spec do_unmodified_since(state(), undefined) -> result();
-                         (state(), binary()) -> no_return() | result().
-do_unmodified_since(State, undefined) ->
+-spec do_unmodified_since(state(), nothing) -> result();
+                         (state(), {just, binary()}) -> no_return() | result().
+do_unmodified_since(State, nothing) ->
     none_match(State);
-do_unmodified_since(#{mtime := Mtime} = State, Date) ->
+do_unmodified_since(#{mtime := Mtime} = State, {just, Date}) ->
     %% FIXME: The origin server MUST NOT perform the requested method if the
     %% selected representation's last modification date is more recent than the
     %% date provided in the field-value; instead the origin server MUST respond
