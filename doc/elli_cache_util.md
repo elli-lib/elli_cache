@@ -17,7 +17,7 @@ __Authors:__ Eric Bailey ([`eric@ericb.me`](mailto:eric@ericb.me)) (_web site:_ 
 
 
 <table width="100%" border="1" cellspacing="0" cellpadding="2" summary="function index"><tr><td valign="top"><a href="#comma_split-1">comma_split/1</a></td><td></td></tr><tr><td valign="top"><a href="#compare_date-3">compare_date/3</a></td><td></td></tr><tr><td valign="top"><a href="#convert_date-1">convert_date/1</a></td><td></td></tr><tr><td valign="top"><a href="#get_values-2">get_values/2</a></td><td></td></tr><tr><td valign="top"><a href="#ifdef_delete-3">ifdef_delete/3</a></td><td>If <code>List1</code> contains at least one entry associated with <code>Key1</code>,
-delete all entries associated with <code>Key2</code>.</td></tr><tr><td valign="top"><a href="#store-3">store/3</a></td><td></td></tr><tr><td valign="top"><a href="#update_element-3">update_element/3</a></td><td></td></tr></table>
+delete all entries associated with <code>Key2</code>.</td></tr><tr><td valign="top"><a href="#maybe_get_value-2">maybe_get_value/2</a></td><td></td></tr><tr><td valign="top"><a href="#store-3">store/3</a></td><td></td></tr><tr><td valign="top"><a href="#update_element-3">update_element/3</a></td><td></td></tr></table>
 
 
 <a name="functions"></a>
@@ -74,6 +74,15 @@ ifdef_delete(Key1, Key2, List1) -&gt; List2
 
 If `List1` contains at least one entry associated with `Key1`,
 delete all entries associated with `Key2`. Otherwise, return `List1`.
+
+<a name="maybe_get_value-2"></a>
+
+### maybe_get_value/2 ###
+
+<pre><code>
+maybe_get_value(Key::binary(), Headers::<a href="https://github.com/elli-lib/elli/blob/develop/doc/elli.md#type-headers">elli:headers()</a>) -&gt; <a href="maybe_m.md#type-maybe">maybe_m:maybe</a>(binary())
+</code></pre>
+<br />
 
 <a name="store-3"></a>
 

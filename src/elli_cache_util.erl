@@ -15,7 +15,7 @@
 -export([convert_date/1, compare_date/3]).
 
 %% Proplist Utils.
--export([get_values/2, ifdef_delete/3, store/3]).
+-export([maybe_get_value/2, get_values/2, ifdef_delete/3, store/3]).
 
 %% Tuple Utils.
 -export([update_element/3]).
@@ -35,12 +35,16 @@ comma_split(Subject) ->
 -spec convert_date(Date) -> maybe_m:maybe(Seconds) when
       Date    :: binary() | calendar:datetime(),
       Seconds :: non_neg_integer().
-convert_date(Bin) when is_binary(Bin) ->
+%% NOTE: convert_request_date/1 throws a function clause error
+%% for input shorter than four characters.
+convert_date(Bin) when is_binary(Bin) andalso size(Bin) >= 4 ->
     ReqDate = binary_to_list(Bin),
     case httpd_util:convert_request_date(ReqDate) of
         bad_date -> maybe_m:fail(Bin);
         DateTime -> convert_date(DateTime)
     end;
+convert_date(Bin) when is_binary(Bin) ->
+    maybe_m:fail(Bin);
 convert_date({_Date, _Time} = DateTime) ->
     Seconds = calendar:datetime_to_gregorian_seconds(DateTime),
     %% FIXME: use Date header, if present
@@ -61,6 +65,15 @@ compare_date(Comp, Date1, Date2) ->
                    return(Comp(Seconds1, Seconds2))]).
 
 %%% ========================================================= [ Proplist Utils ]
+
+-spec maybe_get_value(binary(), elli:headers()) -> maybe_m:maybe(binary()).
+maybe_get_value(_Key, []) ->
+    nothing;
+maybe_get_value(Key, Headers) ->
+    case get_value(Key, Headers) of
+        undefined -> nothing;
+        Value     -> {just, Value}
+    end.
 
 -spec get_values(binary(), elli:headers()) -> [binary()].
 get_values(Key, Headers) ->
