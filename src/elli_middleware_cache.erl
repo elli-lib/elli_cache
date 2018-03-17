@@ -6,15 +6,28 @@
 %%% ==================================================================== [ EOH ]
 -module(elli_middleware_cache).
 
+-behaviour(elli_handler).
+
 -compile({parse_transform, do}).
 
-%% Elli Middleware
--export([preprocess/2, postprocess/3]).
+
+%% Elli Handler
+-export([handle/2, handle_event/3, preprocess/2, postprocess/3]).
+
 
 -include("elli_cache_util.hrl").
 -include_lib("elli/include/elli.hrl").
 
-%%% ======================================================== [ Elli Middleware ]
+
+%%% =========================================================== [ Elli Handler ]
+
+handle(_Event, _Args) ->
+    ignore.
+
+
+handle_event(_Event, _Args, _Config) ->
+    ok.
+
 
 -spec preprocess(Req1, Config) -> Req2 when
       Req1   :: elli:req(),
@@ -30,6 +43,7 @@ preprocess(Req, Config)
     rfc7232:init(Req, MaybeMtime, MaybeETag);
 preprocess(Req, _Config) ->
     Req.
+
 
 -spec postprocess(Req, Res1, Config) -> Res2 when
       Req    :: elli:req(),
@@ -50,6 +64,7 @@ postprocess(Req, {ResponseCode, _Headers, Body} = Res, Config)
 postprocess(_, Res, _) ->
     Res.
 
+
 %%% ===================================================== [ Internal Functions ]
 
 %% @doc Create an {@link rfc7232:etag/0. ETag} from a resource's last modified
@@ -60,5 +75,6 @@ postprocess(_, Res, _) ->
 create_etag(Mtime, Size) ->
     ETag = list_to_binary(httpd_util:create_etag(Mtime, Size)),
     <<"\"", ETag/binary, "\"">>.
+
 
 %%% ==================================================================== [ EOF ]
