@@ -190,7 +190,7 @@ unmodified_since(#{req := #req{headers = RequestHeaders}} = State) ->
                          (state(), {just, binary()}) -> no_return() | result().
 do_unmodified_since(State, nothing) ->
     none_match(State);
-do_unmodified_since(#{mtime := Mtime} = State, {just, Date}) ->
+do_unmodified_since(#{mtime := {just, Mtime}} = State, {just, Date}) ->
     %% FIXME: The origin server MUST NOT perform the requested method if the
     %% selected representation's last modification date is more recent than the
     %% date provided in the field-value; instead the origin server MUST respond
@@ -207,7 +207,10 @@ do_unmodified_since(#{mtime := Mtime} = State, {just, Date}) ->
     case compare_date(fun erlang:'>'/2, Mtime, Date) of
         {just, true} -> precondition_failed();
         _            -> none_match(State)
-    end.
+    end;
+do_unmodified_since(State, _) ->
+    none_match(State).
+
 
 -spec get_unmodified_since(elli:headers()) -> maybe_m:maybe(binary()).
 get_unmodified_since(Headers) ->
