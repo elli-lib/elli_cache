@@ -21,7 +21,7 @@
 
 %%% =========================================================== [ Elli Handler ]
 
-handle(_Event, _Args) ->
+handle(_Req, _Args) ->
     ignore.
 
 
@@ -35,11 +35,7 @@ handle_event(_Event, _Args, _Config) ->
       Req2   :: elli:req().
 preprocess(Req, Config)
   when not(?GET_OR_HEAD(Req#req.method)) ->
-    MaybeMtime = elli_cache:get_modified(Req, Config),
-    MaybeETag  = do([maybe_m ||
-                     Mtime <- MaybeMtime,
-                     Size <- elli_cache:get_size(Req, Config),
-                     return(create_etag(Mtime, Size))]),
+    {MaybeMtime, MaybeETag} = maybe_params(Req, Config),
     rfc7232:init(Req, MaybeMtime, MaybeETag);
 preprocess(Req, _Config) ->
     Req.
@@ -53,19 +49,24 @@ preprocess(Req, _Config) ->
 postprocess(Req, {ResponseCode, Body}, Config)
   when ?OK_GET_OR_HEAD(ResponseCode, Req#req.method) ->
     postprocess(Req, {ResponseCode, [], Body}, Config);
-postprocess(Req, {ResponseCode, _Headers, Body} = Res, Config)
+postprocess(Req, {ResponseCode, _Headers, _Body} = Res, Config)
   when ?OK_GET_OR_HEAD(ResponseCode, Req#req.method) ->
-    MaybeMtime = elli_cache:get_modified(Req, Config),
-    MaybeETag  = do([maybe_m ||
-                     Mtime <- MaybeMtime,
-                     Size  <- return(iolist_size(Body)),
-                     return(create_etag(Mtime, Size))]),
+    {MaybeMtime, MaybeETag} = maybe_params(Req, Config),
     rfc7232:init(Req, MaybeMtime, MaybeETag, Res);
 postprocess(_, Res, _) ->
     Res.
 
 
 %%% ===================================================== [ Internal Functions ]
+
+maybe_params(Req, Config) ->
+    MaybeMtime = elli_cache:get_modified(Req, Config),
+    MaybeETag  = do([maybe_m ||
+                     Mtime <- MaybeMtime,
+                     Size  <- elli_cache:get_size(Req, Config),
+                     return(create_etag(Mtime, Size))]),
+    {MaybeMtime, MaybeETag}.
+
 
 %% @doc Create an {@link rfc7232:etag/0. ETag} from a resource's last modified
 %% date and its size.
