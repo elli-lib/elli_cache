@@ -12,12 +12,15 @@
 -export([get_modified/2, get_size/2]).
 
 -include("elli_cache_util.hrl").
+-include_lib("elli/include/elli.hrl").
+
 
 %%% ================================================================== [ Types ]
 
 -export_type([config/0]).
 
--type config() :: [{mod, Mod :: module()}].
+-type config() :: [elli_handler:callback()].
+
 
 %%% ============================================================== [ Callbacks ]
 
@@ -31,37 +34,43 @@
       Args :: elli_handler:callback_args(),
       Size :: maybe_m:maybe(non_neg_integer()).
 
+
 %%% ================================================================ [ Helpers ]
 
 %% @doc Maybe get the last modified date for a request.
 %% If `{mod, Mod}' is present in `Args' and `Mod:get_modified/2' is exported,
 %% return `Mod:get_modified(Req, Args)'. Otherwise, return `nothing'.
 -spec get_modified(elli:req(), config()) -> maybe_m:maybe(calendar:datetime()).
-get_modified(Req, Args) ->
-    maybe_m:'>>='(get_mod(Args), maybe_apply(_, get_modified, Req, Args)).
+get_modified(_Req, []) ->
+    nothing;
+get_modified(Req, [{Mod, Args}|ModArgs]) ->
+    case maybe_apply(Mod, get_modified, Req, Args) of
+        nothing -> get_modified(Req, ModArgs);
+        Just    -> Just
+    end.
+
 
 %% @doc Maybe get the size of the response to a request.
 %% If `{mod, Mod}' is present in `Args' and `Mod:get_size/2' is exported,
 %% return `Mod:get_size(Req, Args)'. Otherwise, return `nothing'.
 -spec get_size(elli:req(), config()) -> maybe_m:maybe(non_neg_integer()).
-get_size(Req, Args) ->
-    maybe_m:'>>='(get_mod(Args), maybe_apply(_, get_size, Req, Args)).
+get_size(_Req, []) ->
+    nothing;
+get_size(Req, [{Mod, Args}|ModArgs]) ->
+    case maybe_apply(Mod, get_size, Req, Args) of
+        nothing -> get_modified(Req, ModArgs);
+        Just    -> Just
+    end.
+
 
 %%% ===================================================== [ Internal Functions ]
 
--spec get_mod(config()) -> maybe_m:maybe(module()).
-get_mod(Args) ->
-    do([maybe_m ||
-        case proplists:get_value(mod, Args) of
-            undefined -> fail("mod undefined");
-            Mod       -> return(Mod)
-        end]).
-
--spec maybe_apply(module(), atom(), elli:req(), config()) -> maybe_m:maybe(_).
+-spec maybe_apply(module(), atom(), elli:req(), elli_handler:callback_args()) -> maybe_m:maybe(_).
 maybe_apply(Module, Function, Req, Args) ->
     do([maybe_m ||
         ?IF(erlang:function_exported(Module, Function, 2),
             Module:Function(Req, Args),
             fail("Not exported"))]).
+
 
 %%% ==================================================================== [ EOF ]
