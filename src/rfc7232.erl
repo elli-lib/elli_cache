@@ -48,7 +48,7 @@
 %% not('GET' | 'HEAD')
 -spec init(Req, Mtime, ETag) -> result() | no_return() when
       Req   :: elli:req(),
-      Mtime :: calendar:datetime(),
+      Mtime :: maybe_m:maybe(calendar:datetime()),
       ETag  :: maybe_m:maybe(etag()).
 init(Req, Mtime, ETag) ->
     State = #{req => Req, mtime => Mtime, etag => ETag},
